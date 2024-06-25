@@ -3,6 +3,7 @@
 #include <SDL_mixer.h>
 #include <iostream>
 #include <random>
+#include <stdio.h>
 #include <windows.h>
 #include <thread>
 
@@ -42,22 +43,45 @@ public:
     SDL_Window* window = NULL;
     SDL_Surface* screenSurface = NULL;
 
+    Mix_Music* gMusic = Mix_LoadMUS("sexy.wav");
+    Mix_Chunk* rock;
+    
+
     void init() {
+        if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO) < 0) {
+            printf("SDL could not initialize! SDL_Error: %s\n", SDL_GetError());
+            return;
+        }
+
 
         window = SDL_CreateWindow("ForeverNote", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_SHOWN);
         screenSurface = SDL_GetWindowSurface(window);
         SDL_BlitSurface(backgroundImage, NULL, screenSurface, NULL); // 배경화면 그리기
 
+        if (Mix_OpenAudio(44100, MIX_DEFAULT_FORMAT, 2, 2048) < 0) {
+            printf("SDL_mixer could not initialize! SDL_mixer Error: %s\n", Mix_GetError());
+            return;
+        }
+
         TTF_Init(); //폰트
+
+        rock = Mix_LoadWAV("rock_0.wav");
+
     }
 
     void close() {
+        Mix_FreeChunk(rock);
+        rock = NULL;
+        Mix_FreeMusic(gMusic);
+        gMusic = NULL;
+
         SDL_DestroyWindow(window);
         window = NULL;
         TTF_Quit();
         SDL_Quit();
     }
 
+    
     
     
 };
@@ -157,8 +181,11 @@ public:
 
         status->render(sdlApp.screenSurface, font);
 
-        if (player->rock_spirit <= 0)
-            SDL_BlitSurface(endingImage[0], NULL, sdlApp.screenSurface, NULL); //엔딩
+        if (player->rock_spirit <= 0) {
+            SDL_BlitSurface(endingImage[0], NULL, sdlApp.screenSurface, NULL); //게임오버엔딩
+            Mix_PlayChannel(-1, Mix_LoadWAV("gameover.wav"), 0);
+
+        }
         if(player->rock_spirit == 1000)
         {
             SDL_BlitSurface(endingImage[3], NULL, sdlApp.screenSurface, NULL);
@@ -169,12 +196,15 @@ public:
             Sleep(1000);
             SDL_BlitSurface(endingImage[1], NULL, sdlApp.screenSurface, NULL);
             SDL_UpdateWindowSurface(sdlApp.window);
+            Mix_PlayChannel(-1, Mix_LoadWAV("rock_2.wav"), 0);
             while (!quit) {
                 while (SDL_PollEvent(&e) != 0)
                 {
                     if (e.type == SDL_KEYDOWN) {
-                        if (e.key.keysym.sym == SDLK_SPACE)
+                        if (e.key.keysym.sym == SDLK_SPACE) {
+                            Mix_PlayChannel(-1, Mix_LoadWAV("rock_0.wav"), 0);
                             quit = true; //스페이스키 누르면 루프 탈출
+                        }
                         break;
                     }
                 }
@@ -224,6 +254,7 @@ public:
     void run() {
         int getEXP;
         bool is_stage_change;
+        
 
         while (!quit) {
             render(); //그리기
@@ -246,7 +277,7 @@ public:
                         is_stage_change = stage_change();
                     }
                     else if (player->throat_health >= 1 && e.key.keysym.sym == SDLK_d) { //롹. 근데 목상태가 20 이상이어야 가능
-
+                        Mix_PlayChannel(-1, sdlApp.rock, 0);
                         cout << "롹!!!!!!!!!!" << endl; //디버깅용
 
                         player->throat_health -= 1; // 목 상태 악화
@@ -320,10 +351,16 @@ public:
                 cout << "레벨업! " << player->level << "이 됨" << endl; //디버깅용
                 player->exp -= 100;
             }
-            if (player->level == 5) {
+            if (player->level == 3) {
+                sdlApp.rock = Mix_LoadWAV("rock_1.wav");
+            }
+            else if (player->level == 4) {
+                sdlApp.rock = Mix_LoadWAV("rock_2.wav");
+            }
+            else if (player->level == 5) {
+                sdlApp.rock = Mix_LoadWAV("rock_3.wav");
                 player->exp = 0;
             }
-            
             
             status->setText(player->level, player->exp, player->rock_spirit, player->throat_health);
         }
@@ -334,6 +371,7 @@ public:
         SDL_UpdateWindowSurface(sdlApp.window);
 
         bool continueLoop = true;
+        
 
         while (continueLoop) { 
            while (SDL_PollEvent(&e) != 0)

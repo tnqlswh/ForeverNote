@@ -7,6 +7,7 @@
 #include <iostream>
 #include <windows.h>
 #include <random>
+#include <SDL_mixer.h>
 
 using namespace std;
 
@@ -100,6 +101,7 @@ int Stage::updateBubble(int damage, int speed, SDL_Surface* image) {
 }
 
 void Stage::deleteBubble(int i) {
+    Mix_PlayChannel(-1, Mix_LoadWAV("bubble.wav"), 0);
     bubble[i]->setVisible(false);
 }
 
@@ -280,7 +282,7 @@ int Boss_Stage::updateBubble(int damage, int speed, SDL_Surface* bubble_image) {
         bubble[i]->setImage(bubble_image); //비눗방울 이미지 설정
 
         if (bubble[i]->HP <= 0)
-            bubble[i]->setVisible(false);
+            deleteBubble(i);
         exp += 10;
     }
 
